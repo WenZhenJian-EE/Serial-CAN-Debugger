@@ -21,6 +21,102 @@
 
         <div class="toolbar-divider"></div>
 
+        <!-- 框选放大与复位缩放快捷工具 -->
+        <button
+          :class="{ 'btn-primary': isBoxZoomActive }"
+          @click="toggleBoxZoom"
+          :title="t('wave.boxZoomTip')"
+        >
+          <ZoomIn :size="13" />
+          <span>{{ t('wave.boxZoom') }}</span>
+        </button>
+
+        <button
+          @click="resetZoomAndResume"
+          :title="t('wave.resetZoomTip')"
+        >
+          <RotateCcw :size="13" />
+          <span>{{ t('wave.resetZoom') }}</span>
+        </button>
+
+        <div class="toolbar-divider"></div>
+
+        <!-- 横轴时基视窗直接设定 (秒数直接输入 + 快捷预设) -->
+        <div class="axis-control-group" :title="t('wave.timeBaseLabel')">
+          <span class="axis-label">{{ t('wave.timeBaseLabel') }}</span>
+          <select v-model="timeWindowPreset" class="mini-select time-select" @change="onTimeWindowPresetChange">
+            <option :value="0.05">50ms</option>
+            <option :value="0.1">100ms</option>
+            <option :value="0.2">200ms</option>
+            <option :value="0.5">500ms</option>
+            <option :value="1.0">1.0s</option>
+            <option :value="2.0">{{ t('wave.rollStandard') }}</option>
+            <option :value="5.0">5.0s</option>
+            <option :value="10.0">10.0s</option>
+            <option :value="0">{{ t('wave.rollFull') }}</option>
+            <option value="custom">{{ t('wave.timeBaseCustom') }}</option>
+          </select>
+          <div class="direct-input-wrap" v-if="timeWindowPreset !== 0">
+            <input
+              type="number"
+              v-model.number="customTimeWindow"
+              step="0.1"
+              min="0.01"
+              max="3600"
+              class="mini-input-number"
+              @change="onCustomTimeWindowChange"
+              @keydown.enter="onCustomTimeWindowChange"
+              :title="t('wave.timeBaseCustom')"
+            />
+            <span class="unit-suffix">{{ t('wave.timeBaseUnit') }}</span>
+          </div>
+        </div>
+
+        <!-- 纵轴量程直接设定 (Auto 自动量程 + 快速预设 + Min/Max 直接数值输入) -->
+        <div class="axis-control-group" :title="t('wave.yAxisLabel')">
+          <span class="axis-label">{{ t('wave.yAxisLabel') }}</span>
+          <select v-model="yAxisPreset" class="mini-select range-select" @change="onYAxisPresetChange">
+            <option value="auto">{{ t('wave.yAxisAuto') }}</option>
+            <option value="pm5">±5 V</option>
+            <option value="pm10">±10 V</option>
+            <option value="pm15">±15 V</option>
+            <option value="pm24">±24 V</option>
+            <option value="pm50">±50 V</option>
+            <option value="pm100">±100 V</option>
+            <option value="0_3v3">0 ~ 3.3 V</option>
+            <option value="0_5v">0 ~ 5.0 V</option>
+            <option value="0_24v">0 ~ 24 V</option>
+            <option value="0_380v">0 ~ 380 V</option>
+            <option value="custom">{{ t('wave.yAxisCustom') }}</option>
+          </select>
+          <div class="direct-input-wrap" v-if="yAxisPreset !== 'auto'">
+            <input
+              type="number"
+              v-model.number="yAxisMin"
+              step="1"
+              class="mini-input-number y-min"
+              @change="onCustomYAxisChange"
+              @keydown.enter="onCustomYAxisChange"
+              placeholder="Min"
+              title="Y-Min"
+            />
+            <span class="range-sep">~</span>
+            <input
+              type="number"
+              v-model.number="yAxisMax"
+              step="1"
+              class="mini-input-number y-max"
+              @change="onCustomYAxisChange"
+              @keydown.enter="onCustomYAxisChange"
+              placeholder="Max"
+              title="Y-Max"
+            />
+            <span class="unit-suffix">V</span>
+          </div>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
         <!-- 测量光标开关 -->
         <button
           :class="{ 'btn-primary': showCursors }"
@@ -38,6 +134,14 @@
         >
           <TrendingUp :size="13" />
           <span>{{ t('wave.fft') }}</span>
+        </button>
+
+        <!-- 连续平滑样条插值开关 -->
+        <button
+          :class="{ 'btn-primary': isSmoothCurve }"
+          @click="toggleSmoothCurve"
+        >
+          <span>{{ isSmoothCurve ? t('wave.spline') : t('wave.rawLine') }}</span>
         </button>
 
         <!-- 下位机高频灌流压测 / 仿真开关 -->
@@ -64,14 +168,6 @@
           <span>FPS: {{ currentFps }}</span>
         </div>
 
-        <!-- 连续平滑样条插值开关 -->
-        <button
-          :class="{ 'btn-primary': isSmoothCurve }"
-          @click="toggleSmoothCurve"
-        >
-          <span>{{ isSmoothCurve ? t('wave.spline') : t('wave.rawLine') }}</span>
-        </button>
-
         <!-- 刷新率目标选择器 -->
         <div class="picker-group">
           <select v-model.number="targetFps" class="mini-select">
@@ -79,18 +175,6 @@
             <option :value="120">{{ t('wave.fps120') }}</option>
             <option :value="0">{{ t('wave.fpsNative') }}</option>
             <option :value="30">{{ t('wave.fps30') }}</option>
-          </select>
-        </div>
-
-        <!-- 示波器时基视窗选择器 (Roll 滚动模式宽度) -->
-        <div class="picker-group">
-          <select v-model.number="timeWindow" class="mini-select time-select">
-            <option :value="0.5">{{ t('wave.rollSec', { s: '0.5' }) }}</option>
-            <option :value="1.0">{{ t('wave.rollSec', { s: '1.0' }) }}</option>
-            <option :value="2.0">{{ t('wave.rollStandard') }}</option>
-            <option :value="5.0">{{ t('wave.rollSec', { s: '5.0' }) }}</option>
-            <option :value="10.0">{{ t('wave.rollSec', { s: '10.0' }) }}</option>
-            <option :value="0">{{ t('wave.rollFull') }}</option>
           </select>
         </div>
 
@@ -123,6 +207,19 @@
 
     <!-- 图表主体区域 -->
     <div class="chart-content" :class="{ 'with-fft': showFft }">
+      <!-- 局部细节放大与后台持续缓冲悬浮 HUD 胶囊 -->
+      <div v-if="isUserZooming" class="zoom-active-banner">
+        <div class="zoom-banner-left">
+          <Search :size="13" class="zoom-icon-pulse" />
+          <span class="zoom-banner-text">{{ t('wave.zoomActiveHint') }}</span>
+          <span class="zoom-banner-tip">{{ t('wave.wheelZoomHint') }}</span>
+        </div>
+        <button class="btn-resume" @click="resetZoomAndResume">
+          <RotateCcw :size="12" />
+          <span>{{ t('wave.resumeTrack') }}</span>
+        </button>
+      </div>
+
       <!-- 主时域示波图 -->
       <div class="echarts-wrapper" ref="chartRef"></div>
 
@@ -131,7 +228,7 @@
         <div class="cursor-hud-header">
           <div class="hud-title">
             <Crosshair :size="12" class="text-accent" />
-            <span>光标测量卡 (Cursor A / B)</span>
+            <span>{{ t('wave.cursorTitle') }}</span>
           </div>
           <div class="hud-channel-sel">
             <span>测量通道:</span>
@@ -159,15 +256,15 @@
         <!-- 差异参数自动解算 -->
         <div class="hud-delta">
           <div class="delta-item">
-            <span class="delta-label">ΔT:</span>
+            <span class="delta-label">{{ t('wave.deltaT') }}:</span>
             <strong class="delta-value">{{ formatDeltaT(deltaT) }}</strong>
           </div>
           <div class="delta-item">
-            <span class="delta-label">频率 (1/ΔT):</span>
+            <span class="delta-label">{{ t('wave.freq') }} (1/ΔT):</span>
             <strong class="delta-value highlight">{{ formatFrequency(frequency) }}</strong>
           </div>
           <div class="delta-item">
-            <span class="delta-label">ΔV:</span>
+            <span class="delta-label">{{ t('wave.deltaV') }}:</span>
             <strong class="delta-value">{{ Math.abs(cursorValB - cursorValA).toFixed(2) }} V</strong>
           </div>
         </div>
@@ -249,10 +346,10 @@
             />
           </label>
           <label>
-            偏置:
+            偏移:
             <input
               type="number"
-              step="1"
+              step="0.5"
               v-model.number="ch.offset"
               class="mini-input"
             />
@@ -276,6 +373,9 @@ import {
   Crosshair,
   Activity,
   Upload,
+  ZoomIn,
+  RotateCcw,
+  Search,
 } from 'lucide-vue-next';
 import { api } from '../api';
 import { t } from '../i18n';
@@ -301,14 +401,28 @@ const showFft = ref(false);
 const activeFftCh = ref(1);
 const fftThd = ref(0.0);
 const currentFps = ref(0);
-const targetFps = ref(60); // 默认 60 FPS 标准专业高刷！
-const timeWindow = ref(2.0); // 默认 2.0s 工业示波器标准时基视窗！
-const isSmoothCurve = ref(false); // 默认展示下位机真实物理采样折线，支持一键切换平滑插值
+const targetFps = ref(60); // 默认 60 FPS 标准高刷
+const timeWindow = ref(2.0); // 内部生效时基秒数 (0 代表全量历史)
+const timeWindowPreset = ref(2.0); // 下拉预设选择
+const customTimeWindow = ref(2.0); // 直接数值输入的秒数
+const isSmoothCurve = ref(false);
 const simRate = ref(10000); // 模拟压测灌流速率 (1k ~ 100k Sps)
-const AUTO_BUFFER_CAPACITY = 200000; // 自动深度内存管理 (单通道 20 万点，8 通道 160 万点，全自动透明托管，零认知负担)
+const AUTO_BUFFER_CAPACITY = 200000; // 自动深度内存管理 (单通道 20 万点)
+
+// 纵轴量程直接控制
+const yAxisPreset = ref('pm10'); // 'auto', 'pm5', 'pm10', 'pm15', 'pm24', 'pm50', 'pm100', '0_3v3', '0_5v', '0_24v', '0_380v', 'custom'
+const yAxisMin = ref(-10.0);
+const yAxisMax = ref(10.0);
+
+// 缩放与脱机细节检查模式控制器
+const isUserZooming = ref(false);
+const isBoxZoomActive = ref(false);
+let isProgrammaticZoom = false;
+let zoomedXMin = null;
+let zoomedXMax = null;
 
 const minFrameInterval = computed(() => {
-  if (targetFps.value <= 0) return 0; // 0 表示跟随屏幕硬件刷新率 (如 144Hz / 155Hz / 240Hz 原生自适应)
+  if (targetFps.value <= 0) return 0;
   return 1000 / targetFps.value;
 });
 
@@ -439,10 +553,38 @@ function initCharts() {
         borderColor: '#282a32',
         textStyle: { color: '#f3f4f6', fontSize: 11 },
       },
+      toolbox: {
+        show: false,
+        feature: {
+          dataZoom: {
+            yAxisIndex: [0, 1],
+          },
+        },
+      },
+      dataZoom: [
+        {
+          id: 'dataZoomX',
+          type: 'inside',
+          xAxisIndex: [0],
+          filterMode: 'none',
+          zoomOnMouseWheel: true,
+          moveOnMouseMove: true,
+          preventDefaultMouseMove: false,
+        },
+        {
+          id: 'dataZoomY',
+          type: 'inside',
+          yAxisIndex: [0, 1],
+          filterMode: 'none',
+          zoomOnMouseWheel: 'shift',
+          moveOnMouseMove: 'shift',
+          preventDefaultMouseMove: false,
+        },
+      ],
       xAxis: {
         type: 'value',
         min: 0,
-        max: 2.0,
+        max: timeWindow.value > 0 ? timeWindow.value : 2.0,
         splitLine: { show: true, lineStyle: { color: '#1e2028', type: 'dashed' } },
         axisLine: { show: true, lineStyle: { color: '#2e323e' } },
         axisLabel: { color: '#838896', fontSize: 10, formatter: (v) => `${Number(v).toFixed(2)}s` },
@@ -450,8 +592,9 @@ function initCharts() {
       yAxis: [
         {
           type: 'value',
-          min: -10,
-          max: 10,
+          min: yAxisPreset.value === 'auto' ? null : yAxisMin.value,
+          max: yAxisPreset.value === 'auto' ? null : yAxisMax.value,
+          scale: yAxisPreset.value === 'auto',
           position: 'left',
           splitLine: { show: true, lineStyle: { color: '#1e2028', type: 'dashed' } },
           axisLine: { show: true, lineStyle: { color: '#2e323e' } },
@@ -459,8 +602,9 @@ function initCharts() {
         },
         {
           type: 'value',
-          min: -10,
-          max: 10,
+          min: yAxisPreset.value === 'auto' ? null : yAxisMin.value,
+          max: yAxisPreset.value === 'auto' ? null : yAxisMax.value,
+          scale: yAxisPreset.value === 'auto',
           position: 'right',
           splitLine: { show: false },
           axisLine: { show: true, lineStyle: { color: '#2e323e' } },
@@ -480,7 +624,36 @@ function initCharts() {
     };
     myChart.setOption(option);
 
-    // 点击图表快捷移动光标
+    myChart.on('dataZoom', (params) => {
+      if (isProgrammaticZoom) return;
+      isUserZooming.value = true;
+      isBoxZoomActive.value = false;
+
+      try {
+        if (params.batch && params.batch.length > 0) {
+          const item = params.batch.find((b) => b.dataZoomId === 'dataZoomX' || b.xAxisIndex === 0) || params.batch[0];
+          if (item.startValue !== undefined && item.endValue !== undefined) {
+            zoomedXMin = Math.min(item.startValue, item.endValue);
+            zoomedXMax = Math.max(item.startValue, item.endValue);
+          }
+        } else if (params.startValue !== undefined && params.endValue !== undefined) {
+          zoomedXMin = Math.min(params.startValue, params.endValue);
+          zoomedXMax = Math.max(params.startValue, params.endValue);
+        }
+
+        if (zoomedXMin === null || zoomedXMax === null) {
+          const axis = myChart?.getModel()?.getComponent('xAxis', 0)?.axis;
+          if (axis?.scale) {
+            const extent = axis.scale.getExtent();
+            if (extent && extent.length === 2 && !isNaN(extent[0]) && !isNaN(extent[1])) {
+              zoomedXMin = extent[0];
+              zoomedXMax = extent[1];
+            }
+          }
+        }
+      } catch (_) {}
+    });
+
     myChart.getZr().on('click', (params) => {
       if (!showCursors.value || !myChart) return;
       const pointInPixel = [params.offsetX, params.offsetY];
@@ -496,6 +669,202 @@ function initCharts() {
         }
       }
     });
+  }
+}
+
+function toggleBoxZoom() {
+  isBoxZoomActive.value = !isBoxZoomActive.value;
+  if (myChart) {
+    myChart.dispatchAction({
+      type: 'takeGlobalCursor',
+      key: 'dataZoomSelect',
+      dataZoomSelectActive: isBoxZoomActive.value,
+    });
+  }
+  if (isBoxZoomActive.value) {
+    emit('toast', t('wave.boxZoomTip'), 'info');
+  }
+}
+
+function resetZoomAndResume() {
+  isUserZooming.value = false;
+  isBoxZoomActive.value = false;
+  zoomedXMin = null;
+  zoomedXMax = null;
+
+  if (myChart) {
+    myChart.dispatchAction({
+      type: 'takeGlobalCursor',
+      key: 'dataZoomSelect',
+      dataZoomSelectActive: false,
+    });
+
+    isProgrammaticZoom = true;
+    try {
+      myChart.dispatchAction({
+        type: 'dataZoom',
+        dataZoomId: 'dataZoomX',
+        start: 0,
+        end: 100,
+      });
+      myChart.dispatchAction({
+        type: 'dataZoom',
+        dataZoomId: 'dataZoomY',
+        start: 0,
+        end: 100,
+      });
+    } catch (_) {}
+    setTimeout(() => {
+      isProgrammaticZoom = false;
+    }, 50);
+
+    applyYAxis();
+
+    if (isPaused.value) {
+      const tw = timeWindow.value > 0 ? timeWindow.value : 2.0;
+      let latestT = 0;
+      for (let i = 0; i < channels.length; i++) {
+        const buf = seriesData[channels[i].id];
+        if (buf && buf.length > 0) {
+          const t = buf[buf.length - 1][0];
+          if (t > latestT) latestT = t;
+        }
+      }
+      const xMin = Math.max(0, latestT - tw);
+      const xMax = Math.max(tw, latestT);
+      myChart.setOption({
+        xAxis: { min: xMin, max: xMax },
+        series: channels.map((ch) => ({
+          id: `ch-${ch.id}`,
+          data: ch.enabled ? getWindowedDownsampledData(ch.id, xMin, xMax) : [],
+        })),
+      }, false, true);
+    }
+  }
+  emit('toast', t('wave.resetZoomTip'), 'info');
+}
+
+function onTimeWindowPresetChange() {
+  if (timeWindowPreset.value === 'custom') {
+    timeWindow.value = Number(customTimeWindow.value) || 2.0;
+  } else {
+    const val = Number(timeWindowPreset.value);
+    timeWindow.value = val;
+    if (val > 0) {
+      customTimeWindow.value = val;
+    }
+  }
+  if (isUserZooming.value) {
+    resetZoomAndResume();
+  }
+}
+
+function onCustomTimeWindowChange() {
+  const val = parseFloat(customTimeWindow.value);
+  if (isNaN(val) || val <= 0) {
+    customTimeWindow.value = 2.0;
+    timeWindow.value = 2.0;
+    timeWindowPreset.value = 2.0;
+    emit('toast', '时基秒数必须大于 0', 'error');
+    return;
+  }
+  timeWindow.value = val;
+  const STANDARD_PRESETS = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0];
+  if (STANDARD_PRESETS.includes(val)) {
+    timeWindowPreset.value = val;
+  } else {
+    timeWindowPreset.value = 'custom';
+  }
+  if (isUserZooming.value) {
+    resetZoomAndResume();
+  }
+}
+
+function onYAxisPresetChange() {
+  switch (yAxisPreset.value) {
+    case 'auto':
+      break;
+    case 'pm5':
+      yAxisMin.value = -5;
+      yAxisMax.value = 5;
+      break;
+    case 'pm10':
+      yAxisMin.value = -10;
+      yAxisMax.value = 10;
+      break;
+    case 'pm15':
+      yAxisMin.value = -15;
+      yAxisMax.value = 15;
+      break;
+    case 'pm24':
+      yAxisMin.value = -24;
+      yAxisMax.value = 24;
+      break;
+    case 'pm50':
+      yAxisMin.value = -50;
+      yAxisMax.value = 50;
+      break;
+    case 'pm100':
+      yAxisMin.value = -100;
+      yAxisMax.value = 100;
+      break;
+    case '0_3v3':
+      yAxisMin.value = 0;
+      yAxisMax.value = 3.3;
+      break;
+    case '0_5v':
+      yAxisMin.value = 0;
+      yAxisMax.value = 5.0;
+      break;
+    case '0_24v':
+      yAxisMin.value = 0;
+      yAxisMax.value = 24.0;
+      break;
+    case '0_380v':
+      yAxisMin.value = 0;
+      yAxisMax.value = 380.0;
+      break;
+    case 'custom':
+      return;
+  }
+  applyYAxis();
+}
+
+function onCustomYAxisChange() {
+  const minVal = parseFloat(yAxisMin.value);
+  const maxVal = parseFloat(yAxisMax.value);
+  if (isNaN(minVal) || isNaN(maxVal)) {
+    emit('toast', '请输入有效的数值量程', 'error');
+    return;
+  }
+  if (minVal >= maxVal) {
+    emit('toast', '纵轴最小值 (Min) 必须小于最大值 (Max)', 'error');
+    return;
+  }
+  yAxisPreset.value = 'custom';
+  applyYAxis();
+}
+
+function applyYAxis() {
+  if (!myChart) return;
+  if (yAxisPreset.value === 'auto') {
+    myChart.setOption({
+      yAxis: [
+        { min: null, max: null, scale: true },
+        { min: null, max: null, scale: true },
+      ],
+    }, false, true);
+  } else {
+    const minVal = Number(yAxisMin.value);
+    const maxVal = Number(yAxisMax.value);
+    if (!isNaN(minVal) && !isNaN(maxVal) && minVal < maxVal) {
+      myChart.setOption({
+        yAxis: [
+          { min: minVal, max: maxVal, scale: false },
+          { min: minVal, max: maxVal, scale: false },
+        ],
+      }, false, true);
+    }
   }
 }
 
@@ -569,7 +938,6 @@ function initFftChart() {
   }
 }
 
-// 接收单个数据点 (低频单点或内部调用)
 function onNewDataPoint(t, chId, val) {
   if (isPaused.value) return;
 
@@ -584,7 +952,6 @@ function onNewDataPoint(t, chId, val) {
   rawLastVals[chId] = finalVal;
   hasNewData = true;
 
-  // 初始时初始化光标位置
   if (showCursors.value && cursorA.value === 0 && cursorB.value === 0.1 && buf && buf.length > 50) {
     const startT = buf[0][0];
     const endT = buf[buf.length - 1][0];
@@ -594,7 +961,6 @@ function onNewDataPoint(t, chId, val) {
   }
 }
 
-// 批量高速二进制数据注入引擎 (接收 WebSocket 紧凑点阵包，单批处理数千点只需 <0.05ms)
 function onNewDataBatch(dv, totalPoints) {
   if (isPaused.value) return;
   const POINT_SIZE = 14;
@@ -618,8 +984,6 @@ function onNewDataBatch(dv, totalPoints) {
   hasNewData = true;
 }
 
-// 专为海量点数深度波形打造的零切片 Min-Max 峰值保真降采样算法 (单通道耗时 < 0.2ms)
-// 保证瞬态过冲、毛刺尖峰 100% 完整捕获呈现，同时将 Canvas 光栅化点数压缩至视网膜超清分辨率 (1,600点)
 function getDownsampledDisplayData(raw, startIdx = 0, endIdx = -1) {
   if (!raw || raw.length === 0) return [];
   if (endIdx < 0 || endIdx >= raw.length) endIdx = raw.length - 1;
@@ -668,17 +1032,14 @@ function getDownsampledDisplayData(raw, startIdx = 0, endIdx = -1) {
   return result;
 }
 
-// 示波器视窗裁剪与平滑滚动算法 (Roll Mode Window Filter - 零数组分配切片)
 function getWindowedDownsampledData(chId, xMin, xMax) {
   const raw = seriesData[chId];
   if (!raw || raw.length === 0) return [];
 
-  // 如果时基为 0 (全量展开) 或未指定视窗，则降采样全量数据
-  if (xMin === undefined || xMax === undefined || timeWindow.value === 0) {
+  if (xMin === undefined || xMax === undefined || (timeWindow.value === 0 && !isUserZooming.value)) {
     return getDownsampledDisplayData(raw, 0, raw.length - 1);
   }
 
-  // 二分查找定位可见视窗边界 [xMin - 0.05, xMax + 0.05]
   const targetStart = xMin - 0.05;
   let startIdx = 0;
   let low = 0, high = raw.length - 1;
@@ -706,11 +1067,9 @@ function getWindowedDownsampledData(chId, xMin, xMax) {
   }
 
   if (endIdx < startIdx) return [];
-  // 直接传递索引指针范围，彻底避免大数组 slice() 造成的 GC 卡顿！
   return getDownsampledDisplayData(raw, startIdx, endIdx);
 }
 
-// 专业级自适应高刷渲染主循环 (支持 60FPS / 120FPS / 原生高刷，待机 0% CPU)
 function renderLoop(timestamp) {
   animationFrameId = requestAnimationFrame(renderLoop);
 
@@ -719,7 +1078,6 @@ function renderLoop(timestamp) {
     renderedFrames = 0;
     lastFpsUpdate = timestamp;
 
-    // 自动维护充足的深度历史内存缓冲区 (超出 200,000 点且满 5,000 点步进时批量修剪，完全自动透明托管，零 GC 停顿)
     channels.forEach((ch) => {
       const buf = seriesData[ch.id];
       if (buf && buf.length > AUTO_BUFFER_CAPACITY + 5000) {
@@ -727,7 +1085,6 @@ function renderLoop(timestamp) {
       }
     });
 
-    // 定期计算通道指标 (RMS, Pk-Pk)，仅在有波形数据时计算
     channels.forEach((ch) => {
       const data = seriesData[ch.id];
       if (data && data.length > 20) {
@@ -748,26 +1105,22 @@ function renderLoop(timestamp) {
       }
     });
 
-    // 定期执行 FFT
     if (showFft.value) {
       triggerFftUpdate();
     }
   }
 
-  // 核心守则: 仅当有新数据且未暂停、且满足目标刷新率间隔时才调用 setOption!
   const minInterval = minFrameInterval.value;
   if (hasNewData && !isPaused.value && (minInterval === 0 || timestamp - lastRenderTime >= minInterval)) {
     lastRenderTime = timestamp;
     hasNewData = false;
     renderedFrames++;
 
-    // 60Hz 低频刷新通道最新幅值 (完全脱离下位机高速灌流路径，彻底根除 Vue 响应式高频抖动)
     for (const chId in rawLastVals) {
       channelLastVals[chId] = rawLastVals[chId];
     }
 
     if (myChart) {
-      // 1. 获取最新到达的数据时间戳
       let latestT = 0;
       for (let i = 0; i < channels.length; i++) {
         const ch = channels[i];
@@ -777,33 +1130,37 @@ function renderLoop(timestamp) {
         }
       }
 
-      // 2. 根据时基视窗计算滚动范围 (Roll Mode)
-      const tw = timeWindow.value;
-      let xMin, xMax;
-      if (tw > 0) {
-        xMin = Math.max(0, latestT - tw);
-        xMax = Math.max(tw, latestT);
+      if (isUserZooming.value) {
+        const seriesUpdate = channels.map((ch) => ({
+          id: `ch-${ch.id}`,
+          data: ch.enabled ? getWindowedDownsampledData(ch.id, zoomedXMin, zoomedXMax) : [],
+        }));
+        myChart.setOption({ series: seriesUpdate }, false, true);
       } else {
-        xMin = seriesData[1]?.[0]?.[0] ?? 0;
-        xMax = Math.max(1.0, latestT);
+        const tw = timeWindow.value;
+        let xMin, xMax;
+        if (tw > 0) {
+          xMin = Math.max(0, latestT - tw);
+          xMax = Math.max(tw, latestT);
+        } else {
+          xMin = seriesData[1]?.[0]?.[0] ?? 0;
+          xMax = Math.max(1.0, latestT);
+        }
+
+        const seriesUpdate = channels.map((ch) => ({
+          id: `ch-${ch.id}`,
+          data: ch.enabled ? getWindowedDownsampledData(ch.id, xMin, xMax) : [],
+        }));
+
+        myChart.setOption({
+          xAxis: { min: xMin, max: xMax },
+          series: seriesUpdate,
+        }, false, true);
       }
-
-      // 3. 截取视窗内数据并降采样
-      const seriesUpdate = channels.map((ch) => ({
-        id: `ch-${ch.id}`,
-        data: ch.enabled ? getWindowedDownsampledData(ch.id, xMin, xMax) : [],
-      }));
-
-      // 4. 同步更新 x 轴视窗与波形 (平滑向左滚动)
-      myChart.setOption({
-        xAxis: { min: xMin, max: xMax },
-        series: seriesUpdate,
-      }, false, true);
     }
   }
 }
 
-// 当光标调节时单独更新 MarkLine，绝不混入高速数据流
 function updateCursorMarkLine() {
   if (myChart) {
     myChart.setOption({
@@ -818,7 +1175,6 @@ function updateCursorMarkLine() {
 }
 watch([cursorA, cursorB, showCursors, cursorChannel], updateCursorMarkLine);
 
-// 当通道开关或缩放偏移改变时触发即刻重绘
 watch(channels, () => {
   hasNewData = true;
 }, { deep: true });
@@ -853,21 +1209,18 @@ function toggleSmoothCurve() {
   emit('toast', isSmoothCurve.value ? '已开启样条平滑插值 (连续模拟平滑波形)' : '已切换为原始离散采样折线', 'info');
 }
 
-
 function toggleSimulation() {
   isSimulating.value = !isSimulating.value;
   if (isSimulating.value) {
-    isPaused.value = false; // 强制解除暂停锁定
+    isPaused.value = false;
 
     const rate = simRate.value || 10000;
     const dt = 1.0 / rate;
     const pointsPerTick = Math.max(1, Math.round(rate / 60));
 
-    // 确定起始时间点
     const lastT = Math.max(0, seriesData[1]?.at(-1)?.[0] ?? 0);
     simT = lastT > 0 ? lastT : 0;
 
-    // 立即同步写入首批采样点，实现 0ms 瞬间直出波形！
     for (let i = 0; i < Math.min(200, pointsPerTick); i++) {
       simT += dt;
       const v1 = 5.0 * Math.sin(2 * Math.PI * 50 * simT);
@@ -883,7 +1236,6 @@ function toggleSimulation() {
     }
     hasNewData = true;
 
-    // 模拟下位机真实物理数据流高频灌流 (1k ~ 100k Sps 真实高频压测 - 批量直写零开销)
     simTimer = setInterval(() => {
       if (isPaused.value) return;
       const b1 = seriesData[1];
@@ -928,11 +1280,12 @@ function togglePause() {
 
   if (myChart) {
     if (isPaused.value) {
-      // 暂停时启用全量漫游缩放与历史滑条
       myChart.setOption({
         dataZoom: [
-          { type: 'inside', xAxisIndex: [0] },
+          { id: 'dataZoomX', type: 'inside', disabled: false },
+          { id: 'dataZoomY', type: 'inside', disabled: false },
           {
+            id: 'dataZoomSlider',
             type: 'slider',
             xAxisIndex: [0],
             show: true,
@@ -945,11 +1298,11 @@ function togglePause() {
         ],
       }, false, true);
     } else {
-      // 运行时关闭历史滑条，恢复平滑滚屏
       myChart.setOption({
         dataZoom: [
-          { type: 'inside', disabled: true },
-          { type: 'slider', show: false },
+          { id: 'dataZoomX', type: 'inside', disabled: false },
+          { id: 'dataZoomY', type: 'inside', disabled: false },
+          { id: 'dataZoomSlider', type: 'slider', show: false },
         ],
       }, false, true);
     }
@@ -970,17 +1323,16 @@ function clearData() {
   }
   simT = 0;
   hasNewData = false;
+  isUserZooming.value = false;
   emit('toast', '波形缓冲区已全部清空', 'info');
 }
 
-// 触发导入 CSV 文件选择器
 function triggerCsvImport() {
   if (csvFileInputRef.value) {
     csvFileInputRef.value.click();
   }
 }
 
-// 接收选择的 CSV 文件并解析
 function handleCsvFileImport(e) {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -998,7 +1350,6 @@ function handleCsvFileImport(e) {
   reader.readAsText(file);
 }
 
-// 智能全格式 CSV 解析引擎
 function parseAndLoadCsv(text, filename) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
   if (lines.length === 0) {
@@ -1006,7 +1357,6 @@ function parseAndLoadCsv(text, filename) {
     return;
   }
 
-  // 1. 清空当前缓冲区并强制置为暂停模式，防止实时数据冲毁导入波形
   channels.forEach((ch) => {
     seriesData[ch.id] = [];
     channelLastVals[ch.id] = 0.0;
@@ -1016,18 +1366,16 @@ function parseAndLoadCsv(text, filename) {
     toggleSimulation();
   }
 
-  // 2. 检测分隔符 (逗号, 分号, Tab)
   const firstLine = lines[0];
   let sep = ',';
   if (firstLine.includes('\t')) sep = '\t';
   else if (firstLine.includes(';') && !firstLine.includes(',')) sep = ';';
 
-  // 3. 判断是否包含表头行
   let startLineIdx = 0;
   const headerCols = lines[0].split(sep).map((c) => c.trim().replace(/^["']|["']$/g, ''));
   const isFirstColNumeric = !isNaN(parseFloat(headerCols[0]));
 
-  let isLongFormat = false; // 三列模式: Time, Channel_ID, Value
+  let isLongFormat = false;
   if (!isFirstColNumeric) {
     startLineIdx = 1;
     const lowerCols = headerCols.map((c) => c.toLowerCase());
@@ -1057,7 +1405,6 @@ function parseAndLoadCsv(text, filename) {
       }
     }
   } else {
-    // 宽表模式: Col0=Time, Col1~Col8=CH1~CH8
     for (let i = startLineIdx; i < lines.length; i++) {
       const parts = lines[i].split(sep).map((p) => p.trim());
       if (parts.length === 0) continue;
@@ -1088,7 +1435,6 @@ function parseAndLoadCsv(text, filename) {
     return;
   }
 
-  // 4. 自动勾选并激活含有数据的通道，计算指标
   channels.forEach((ch) => {
     const d = seriesData[ch.id] || [];
     ch.enabled = d.length > 0;
@@ -1113,13 +1459,12 @@ function parseAndLoadCsv(text, filename) {
     tMax = 1.0;
   }
 
-  // 5. 设置光标默认在 30% 与 70% 处
   const span = tMax - tMin;
   cursorA.value = tMin + span * 0.3;
   cursorB.value = tMin + span * 0.7;
 
-  // 6. 切换为全量展开模式并渲染
   timeWindow.value = 0;
+  timeWindowPreset.value = 0;
   hasNewData = false;
 
   if (myChart) {
@@ -1131,8 +1476,10 @@ function parseAndLoadCsv(text, filename) {
       xAxis: { min: tMin, max: tMax },
       series: seriesUpdate,
       dataZoom: [
-        { type: 'inside', xAxisIndex: [0] },
+        { id: 'dataZoomX', type: 'inside', disabled: false },
+        { id: 'dataZoomY', type: 'inside', disabled: false },
         {
+          id: 'dataZoomSlider',
           type: 'slider',
           xAxisIndex: [0],
           show: true,
@@ -1268,7 +1615,7 @@ onBeforeUnmount(() => {
 }
 
 .chart-toolbar {
-  height: 38px;
+  min-height: 38px;
   background-color: var(--bg-sidebar);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -1277,17 +1624,25 @@ onBeforeUnmount(() => {
   padding: 0 12px;
   flex-shrink: 0;
   user-select: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
+.chart-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
 .toolbar-left, .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 .toolbar-divider {
   width: 1px;
   height: 16px;
   background: var(--border);
-  margin: 0 4px;
+  margin: 0 3px;
 }
 .kbd-hint {
   font-size: 9px;
@@ -1320,9 +1675,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 5px;
 }
-.badge-dot {
-  color: var(--border-light);
-}
 
 .picker-group {
   display: flex;
@@ -1352,8 +1704,66 @@ onBeforeUnmount(() => {
 .time-select {
   color: #10b981;
 }
-.buffer-select {
-  color: #a855f7;
+.range-select {
+  color: #f59e0b;
+}
+
+/* 轴直接设定控制组 */
+.axis-control-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.axis-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-weight: 500;
+}
+.direct-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.mini-input-number {
+  width: 44px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  color: #38bdf8;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: center;
+  padding: 0 2px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.mini-input-number:focus {
+  border-color: var(--accent);
+}
+.mini-input-number:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.mini-input-number.y-min {
+  color: #f59e0b;
+}
+.mini-input-number.y-max {
+  color: #10b981;
+}
+.unit-suffix {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+.range-sep {
+  font-size: 10px;
+  color: var(--text-dim);
 }
 
 .chart-content {
@@ -1367,6 +1777,66 @@ onBeforeUnmount(() => {
   flex: 1;
   width: 100%;
   min-height: 0;
+}
+
+/* 局部放大与后台持续缓冲悬浮横条 */
+.zoom-active-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  background: rgba(18, 24, 38, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(59, 130, 246, 0.2);
+  border-radius: 20px;
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+  animation: banner-slide-down 0.2s ease-out;
+}
+@keyframes banner-slide-down {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.zoom-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.zoom-icon-pulse {
+  color: #38bdf8;
+  animation: pulse-glow 1.5s infinite;
+}
+.zoom-banner-text {
+  color: #f3f4f6;
+  font-weight: 600;
+}
+.zoom-banner-tip {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.btn-resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-resume:hover {
+  background: #1d4ed8;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
 }
 
 /* 双测量光标 HUD 浮层 */
