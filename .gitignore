@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# PyInstaller
+build/
+dist/
+*.spec
+*.exe
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# App generated logs & profiles
+fault_logs/
+trend_logs/
+*.log
+main.py.bak
+channel_profiles.json
+cmd_buttons.json
+app_config.json
+database.db
+.pytest_cache/
+
+# Node / WebUI
+node_modules/
+**/node_modules/
+**/dist/
+
+# Agent runtime
+.agents/

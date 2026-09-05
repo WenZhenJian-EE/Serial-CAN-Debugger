@@ -1,0 +1,310 @@
+/* ==========================================================================
+   theme.css - VS Code 级精细化工控暗黑设计系统 (现代极速桌面架构规范)
+   ========================================================================== */
+
+:root {
+  /* 基础主色调 */
+  --bg-app: #0d0e11;
+  --bg-sidebar: #131418;
+  --bg-card: #181a1f;
+  --bg-card-hover: #20232a;
+  --bg-input: #101115;
+  --bg-input-hover: #16181d;
+  --bg-input-focus: #14171f;
+
+  /* 边框与分割线 */
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border: #282a32;
+  --border-focus: #3b82f6;
+
+  /* 文本层次 */
+  --text-main: #f3f4f6;
+  --text-regular: #d1d5db;
+  --text-muted: #838896;
+  --text-dim: #525666;
+
+  /* 品牌与功能色 (工业荧光系) */
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-rgb: 59, 130, 246;
+
+  --success: #10b981;
+  --success-rgb: 16, 185, 129;
+
+  --warning: #f59e0b;
+  --warning-rgb: 245, 158, 11;
+
+  --danger: #ef4444;
+  --danger-rgb: 239, 68, 68;
+
+  --purple: #a855f7;
+  --cyan: #06b6d4;
+
+  /* 字体家族 (100% 现代系统原生字体栈，严禁内嵌外部字体，零额外体积与极速渲染) */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+
+  /* 尺寸与圆角规范 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* 深度阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* 全局重置与基础样式 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 自研精致深色细滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 按钮规范 */
+button {
+  font-family: inherit;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  outline: none;
+}
+button:hover {
+  background-color: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+button:active {
+  transform: scale(0.97);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 变体按钮 */
+button.btn-primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+button.btn-primary:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.35);
+}
+
+button.btn-success {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+button.btn-success:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 12px rgba(var(--success-rgb), 0.35);
+}
+
+button.btn-danger {
+  background-color: rgba(var(--danger-rgb), 0.15);
+  border-color: rgba(var(--danger-rgb), 0.3);
+  color: #f87171;
+}
+button.btn-danger:hover {
+  background-color: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(var(--danger-rgb), 0.35);
+}
+
+button.btn-icon {
+  padding: 5px;
+  border-radius: var(--radius-sm);
+}
+
+/* 输入框规范 */
+input, select, textarea {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--bg-input);
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.15s ease;
+  user-select: text;
+}
+input:hover, select:hover, textarea:hover {
+  background-color: var(--bg-input-hover);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus);
+  background-color: var(--bg-input-focus);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+}
+input.mono, textarea.mono {
+  font-family: var(--font-mono);
+}
+
+/* 卡片容器 */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  box-shadow: var(--shadow-sm);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-light);
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-regular);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 状态徽章 Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.badge.connected {
+  background: rgba(var(--success-rgb), 0.12);
+  color: #34d399;
+  border: 1px solid rgba(var(--success-rgb), 0.25);
+}
+.badge.connected .badge-dot {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+.badge.disconnected {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.badge.disconnected .badge-dot {
+  background: var(--text-dim);
+}
+
+/* 表格与等宽代码块 */
+.code-mono {
+  font-family: var(--font-mono);
+}
+
+/* 键盘快捷键提示 Badge */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 4px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   W3C 原生 View Transitions API (液态流体转场动效)
+   ========================================================================== */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.2s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(root) {
+  animation-name: fluid-fade-out;
+}
+
+::view-transition-new(root) {
+  animation-name: fluid-fade-in;
+}
+
+@keyframes fluid-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.995);
+    filter: blur(1px);
+  }
+}
+
+@keyframes fluid-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(1.005);
+    filter: blur(1px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
